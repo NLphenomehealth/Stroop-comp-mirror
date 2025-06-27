@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Response Test</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js" 
+            onerror="console.warn('Firebase App SDK could not be loaded. Test will run offline.');"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"
+            onerror="console.warn('Firebase Database SDK could not be loaded. Test will run offline.');"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            color: #555;
+            margin-bottom: 20px;
+        }
+        
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #45a049;
+        }
+        
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #333;
+        }
+        
+        .stroop-word {
+            font-size: 72px;
+            font-weight: bold;
+            margin: 40px 0;
+            letter-spacing: 5px;
+        }
+        
+        .response-buttons {
+            margin: 30px 0;
+        }
+        
+        .response-button {
+            padding: 15px 30px;
+            margin: 0 10px;
+            font-size: 20px;
+            font-weight: bold;
+            border: 3px solid black;
+            background-color: white;
+            color: black;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        
+        .response-button:hover {
+            transform: scale(1.1);
+            background-color: #f0f0f0;
+        }
+        
+        .feedback {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 20px 0;
+            height: 40px;
+        }
+        
+        .wrong {
+            color: red;
+        }
+        
+        .correct {
+            color: green;
+        }
+        
+        .instructions {
+            text-align: left;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .instructions.center {
+            text-align: center;
+        }
+        
+        .example {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-family: monospace;
+        }
+        
+        .stats {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .skip-button {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: #ff6b6b;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            opacity: 0.7;
+        }
+        
+        .skip-button:hover {
+            opacity: 1;
+        }
+        
+        .status-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .status-indicator.glow {
+            animation: glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 2px 10px rgba(0,0,0,0.2), 0 0 20px rgba(255,255,255,0.5); }
+            50% { box-shadow: 0 2px 10px rgba(0,0,0,0.2), 0 0 30px rgba(255,255,255,0.8); }
+        }
+        
+        .status-winning {
+            background-color: #4CAF50;
+            color: white;
+            border: 2px solid #45a049;
+        }
+        
+        .status-losing {
+            background-color: #f44336;
+            color: white;
+            border: 2px solid #d32f2f;
+        }
+        
+        .status-tied {
+            background-color: #ff9800;
+            color: white;
+            border: 2px solid #f57c00;
+        }
+        
+        .status-neutral {
+            background-color: #2196F3;
+            color: white;
+            border: 2px solid #1976D2;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(-30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .stroop-word.new-word {
+            animation: fadeIn 0.3s ease-out, slideIn 0.3s ease-out;
+        }
+        
+        .response-button.pressed {
+            transform: scale(0.9);
+            opacity: 0.7;
+        }
+        
+        /* Monitor Mode Styles */
+        .monitor-container {
+            max-width: 1200px;
+            padding: 20px;
+        }
+        
+        .monitor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .monitor-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .monitor-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .session-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .session-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #f5f5f5;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .session-item:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .session-item.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .monitor-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .monitor-stat:last-child {
+            border-bottom: none;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip Button for Testing -->
+    <button class="skip-button" onclick="skipToNext()" title="Skip to next section (for testing only)">Skip →</button>
+    
+    <div class="container">
+        <!-- Welcome Screen -->
+        <div id="welcome" class="screen">
+            <h1>Color Response Test</h1>
+            <p>Total Time: ~19 minutes</p>
+            <button class="button" onclick="startProtocol()">Start Test</button>
+            <!-- Hidden monitor access -->
+            <div style="position: absolute; bottom: 5px; right: 5px;">
+                <input type="password" id="monitorPassword" placeholder="Monitor Access" style="display: none; padding: 5px; font-size: 12px;">
+            </div>
+            <!-- Debug button (remove in production) -->
+            <div style="position: absolute; bottom: 5px; left: 5px;">
+                <button onclick="testFirebase()" style="padding: 5px; font-size: 10px; opacity: 0.3;">Test FB</button>
+            </div>
+        </div>
+        
+        <!-- Monitor Mode Screen -->
+        <div id="monitor" class="screen hidden">
+            <h1>Test Monitor Dashboard</h1>
+            <div class="monitor-grid">
+                <div class="monitor-card">
+                    <h3>Active Sessions</h3>
+                    <div class="session-list" id="sessionList">
+                        <p>Loading sessions...</p>
+                    </div>
+                </div>
+                <div class="monitor-card">
+                    <h3>Selected Session Details</h3>
+                    <div id="sessionDetails">
+                        <p>Select a session to view details</p>
+                    </div>
+                </div>
+                <div class="monitor-card">
+                    <h3>Live Status</h3>
+                    <div id="liveStatus">
+                        <p>No session selected</p>
+                    </div>
+                </div>
+            </div>
+            <button class="button" onclick="location.reload()" style="margin-top: 20px;">Exit Monitor Mode</button>
+        </div>
+        
+        <!-- Resting Baseline Screen -->
+        <div id="baseline" class="screen hidden">
+            <h2>Resting Baseline</h2>
+            <p>Please relax, clear your mind, and sit quietly for five minutes.</p>
+            <button class="button" id="startBaselineBtn" onclick="startBaselineTimer()">Start Timer</button>
+            <div class="timer" id="baselineTimer" style="display: none;">5:00</div>
+        </div>
+        
+        <!-- Instructions Screen -->
+        <div id="instructions" class="screen hidden">
+            <h2>Color Response Instructions</h2>
+            <div class="instructions">
+                <p><strong>Important:</strong> Respond to the <em>color</em> of the text, not the actual word.</p>
+                <p><strong>Time Limit:</strong> You have 1.5 seconds to respond to each word. If you don't respond in time, it counts as wrong.</p>
+                <p>You can respond in two ways:</p>
+                <ul>
+                    <li><strong>Keyboard keys:</strong>
+                        <ul>
+                            <li><strong>R</strong> - for Red color</li>
+                            <li><strong>G</strong> - for Green color</li>
+                            <li><strong>B</strong> - for Blue color</li>
+                            <li><strong>Y</strong> - for Yellow color</li>
+                        </ul>
+                    </li>
+                    <li><strong>On-screen buttons:</strong> Click the R, G, B, or Y buttons below the word</li>
+                </ul>
+                <p><strong>Examples:</strong></p>
+                <div class="example">
+                    <span style="color: red;">GREEN</span> → press "R" (because the color is red)<br>
+                    <span style="color: #FFD700;">YELLOW</span> → press "Y" (because the color is yellow)<br>
+                    <span style="color: green;">BLUE</span> → press "G" (because the color is green)<br>
+                    <span style="color: blue;">RED</span> → press "B" (because the color is blue)
+                </div>
+                <p>Focus on the color of the text, not what the word says.</p>
+            </div>
+            <button class="button" onclick="startPractice()">Start Practice</button>
+        </div>
+        
+        <!-- Practice Screen -->
+        <div id="practice" class="screen hidden">
+            <h2>Practice Session</h2>
+            <div class="instructions">
+                <p id="practiceInstruction">Let's practice responding to colors.</p>
+            </div>
+            <div class="stroop-word" id="practiceWord" style="margin: 30px 0;">READY</div>
+            <div class="response-buttons" id="practiceButtons">
+                <button class="response-button" onclick="checkPracticeResponse('red')">R</button>
+                <button class="response-button" onclick="checkPracticeResponse('green')">G</button>
+                <button class="response-button" onclick="checkPracticeResponse('blue')">B</button>
+                <button class="response-button" onclick="checkPracticeResponse('yellow')">Y</button>
+            </div>
+            <div class="feedback" id="practiceFeedback"></div>
+            <div class="status-indicator" id="practiceStatusIndicator" style="display: none;">
+                <span id="practiceStatusText">Status</span>
+            </div>
+            <button class="button hidden" id="startTestBtn" onclick="startColorTest()">Begin Color Response Test</button>
+        </div>
+        
+        <!-- Color Response Test Screen -->
+        <div id="colorTest" class="screen hidden">
+            <div class="status-indicator" id="statusIndicator" style="display: none;">
+                <span id="statusText">Status</span>
+            </div>
+            <h2 id="blockTitle">Color Response - Block 1</h2>
+            <div class="timer" id="colorTimer">3:00</div>
+            <div class="stroop-word" id="colorWord">READY</div>
+            <div class="response-buttons">
+                <button class="response-button" onclick="checkResponse('red')">R</button>
+                <button class="response-button" onclick="checkResponse('green')">G</button>
+                <button class="response-button" onclick="checkResponse('blue')">B</button>
+                <button class="response-button" onclick="checkResponse('yellow')">Y</button>
+            </div>
+            <div class="feedback" id="feedback"></div>
+            <div class="stats">
+                <span>Wrong: <span id="wrong">0</span></span>
+            </div>
+        </div>
+        
+        <!-- Block Complete Screen -->
+        <div id="blockComplete" class="screen hidden">
+            <h2 id="blockCompleteTitle">Block Complete</h2>
+            <div style="display: flex; justify-content: space-around; margin: 30px 0;">
+                <div class="stats" style="font-size: 24px; text-align: center; padding: 20px; border: 2px solid #d32f2f; border-radius: 10px; min-width: 250px; background-color: #fff0f0;">
+                    <p style="margin: 5px 0; font-weight: bold; font-size: 20px; color: #d32f2f; text-transform: uppercase;">❌ Loser ❌</p>
+                    <p style="margin: 10px 0; font-weight: bold; font-size: 26px;">Your Score</p>
+                    <p style="margin: 10px 0; color: green;">Correct: <span id="blockCorrect">0</span></p>
+                    <p style="margin: 10px 0; color: red;">Wrong: <span id="blockWrong">0</span></p>
+                    <p style="margin: 20px 0; font-weight: bold;">Accuracy: <span id="blockAccuracy">0</span>%</p>
+                </div>
+                <div class="stats" style="font-size: 24px; text-align: center; padding: 20px; border: 2px solid #4CAF50; border-radius: 10px; min-width: 250px; background-color: #f0fff0;">
+                    <p style="margin: 5px 0; font-weight: bold; font-size: 20px; color: #4CAF50; text-transform: uppercase;">🏆 Winner 🏆</p>
+                    <p style="margin: 10px 0; font-weight: bold; font-size: 26px;">Competitor Score</p>
+                    <p style="margin: 10px 0; color: green;">Correct: <span id="competitorCorrect">0</span></p>
+                    <p style="margin: 10px 0; color: red;">Wrong: <span id="competitorWrong">0</span></p>
+                    <p style="margin: 20px 0; font-weight: bold;">Accuracy: <span id="competitorAccuracy">0</span>%</p>
+                </div>
+            </div>
+            <button class="button" id="nextBlockBtn" onclick="nextBlock()">Continue to Next Block</button>
+        </div>
+        
+        <!-- Meal Screen -->
+        <div id="meal" class="screen hidden">
+            <h2>Meal Time</h2>
+            <p style="max-width: 500px; margin: 20px auto; line-height: 1.6;">Please drink the entire liquid meal within 5 minutes. Try to pace yourself so that you finish right when the timer reaches 00:00.</p>
+            <button class="button" id="startMealBtn" onclick="startMealTimer()" style="margin-top: 30px;">Start Meal Timer</button>
+            <div class="timer" id="mealTimer" style="display: none;">5:00</div>
+        </div>
+        
+        <!-- Complete Screen -->
+        <div id="complete" class="screen hidden">
+            <h1>Protocol Complete</h1>
+            <p>You have now completed this challenge segment.</p>
+            <p>You may now exit this webpage.</p>
+        </div>
+    </div>
+    
+    <script>
+        try {
+            console.log('Stroop Test Script Starting...');
+            
+            // Global error handler
+            window.addEventListener('error', function(event) {
+                console.error('Global error caught:', event.error);
+                console.error('Error details:', {
+                    message: event.message,
+                    filename: event.filename,
+                    lineno: event.lineno,
+                    colno: event.colno,
+                    stack: event.error ? event.error.stack : 'No stack trace'
+                // Make functions globally accessible for onclick handlers
+        window.startProtocol = startProtocol;
+        window.startBaselineTimer = startBaselineTimer;
+        window.startPractice = startPractice;
+        window.checkPracticeResponse = checkPracticeResponse;
+        window.startColorTest = startColorTest;
+        window.checkResponse = checkResponse;
+        window.nextBlock = nextBlock;
+        window.startMealTimer = startMealTimer;
+        window.skipToNext = skipToNext;
+            });
+        
+        // Make functions globally accessible for onclick handlers
+        window.startProtocol = startProtocol;
+        window.startBaselineTimer = startBaselineTimer;
+        window.startPractice = startPractice;
+        window.checkPracticeResponse = checkPracticeResponse;
+        window.startColorTest = startColorTest;
+        window.checkResponse = checkResponse;
+        window.nextBlock = nextBlock;
+        window.startMealTimer = startMealTimer;
+        window.skipToNext = skipToNext;
+            
+            console.log('Error handler registered');
+            
+            console.log('Starting test initialization...');
+            console.log('Firebase available:', typeof firebase !== 'undefined');
+            
+            // Check if running from file:// and warn
+            if (window.location.protocol === 'file:') {
+                console.warn('⚠️ Running from file:// URL detected.');
+                console.warn('Firebase monitoring will NOT work when opening the HTML file directly.');
+                console.warn('To enable monitoring, use one of these methods:');
+                console.warn('1. Python: python -m http.server 8000');
+                console.warn('2. Node.js: npx http-server');
+                console.warn('3. Upload to any web host');
+                console.warn('The test will still work perfectly for participants without monitoring.');
+            }
+            
+            console.log('Starting Firebase configuration...');
+        
+        // Firebase Configuration for stroop-test-a141d
+        const firebaseConfig = {
+            apiKey: "AIzaSyDugxLBqWqIItvyiztHNYRxSY8lw7O-POg",
+            authDomain: "stroop-test-a141d.firebaseapp.com",
+            databaseURL: "https://stroop-test-a141d-default-rtdb.firebaseio.com",
+            projectId: "stroop-test-a141d",
+            storageBucket: "stroop-test-a141d.firebasestorage.app",
+            messagingSenderId: "865695329667",
+            appId: "1:865695329667:web:0c5421fddc064fbfa55ab6"
+        };
+        
+        console.log('Firebase config loaded');
+        
+        // Firebase variables (will be initialized after DOM loads)
+        let database = null;
+        let sessionId = null;
+        
+        // Monitor mode variables
+        let isMonitorMode = false;
+        let monitorInterval = null;
+        
+        console.log('Global variables declared');
+        
+        // Global variables
+        let currentScreen = 'welcome';
+        let currentBlock = 0;
+        let timer = null;
+        let responseTimer = null;
+        let colorInterval = null;
+        let currentWord = null;
+        let currentColor = null;
+        let isProcessing = false;
+        let practiceStep = 0;
+        let competitorStats = { correct: 0, wrong: 0 };
+        let stats = {
+            correct: 0,
+            wrong: 0,
+            blockStats: []
+        };
+        
+        console.log('Test variables declared');
+        
+        // Word and color options
+        const words = ['RED', 'GREEN', 'BLUE', 'YELLOW'];
+        const colors = ['red', 'green', 'blue', '#FFD700']; // Using Gold for yellow
+        
+        // Mismatch probability by block
+        const mismatchProbability = [0.2, 0.4, 0.7]; // Block 1, 2, 3
+        
+        // Firebase tracking functions
+        function trackEvent(eventType, data = {}) {
+            if (!database || isMonitorMode) {
+                console.log('Event (not tracked):', eventType, data);
+                return;
+            }
+            
+            try {
+                const timestamp = new Date().toISOString();
+                const eventData = {
+                    timestamp,
+                    sessionId,
+                    eventType,
+                    currentScreen,
+                    currentBlock,
+                    ...data
+                };
+                
+                // Write to Firebase
+                database.ref(`sessions/${sessionId}/events`).push(eventData);
+                database.ref(`sessions/${sessionId}/currentState`).set({
+                    screen: currentScreen,
+                    block: currentBlock,
+                    lastUpdate: timestamp,
+                    stats: currentBlock > 0 ? stats.blockStats[currentBlock - 1] : null,
+                    totalStats: stats
+                });
+            } catch (error) {
+                console.error('Firebase tracking error:', error);
+            }
+        }
+        
+        // Monitor mode functions
+        function enterMonitorMode() {
+            if (!database) {
+                alert('Firebase is not available. Monitor mode requires Firebase to be properly configured and loaded.');
+                return;
+            }
+            
+            isMonitorMode = true;
+            showScreen('monitor');
+            startMonitoring();
+        }
+        
+        function startMonitoring() {
+            if (!database) {
+                document.getElementById('sessionList').innerHTML = '<p>Firebase not initialized. Please check console for errors.</p>';
+                return;
+            }
+            
+            // Listen for all sessions
+            database.ref('sessions').on('value', (snapshot) => {
+                const sessions = snapshot.val() || {};
+                updateSessionList(sessions);
+            }, (error) => {
+                console.error('Firebase monitoring error:', error);
+                document.getElementById('sessionList').innerHTML = '<p>Error loading sessions: ' + error.message + '</p>';
+            });
+        }
+        
+        function updateSessionList(sessions) {
+            const sessionList = document.getElementById('sessionList');
+            if (!sessionList) {
+                console.error('Session list element not found');
+                return;
+            }
+            
+            sessionList.innerHTML = '';
+            
+            Object.keys(sessions).forEach(sessionKey => {
+                const session = sessions[sessionKey];
+                const state = session.currentState || {};
+                const item = document.createElement('div');
+                item.className = 'session-item';
+                item.innerHTML = `
+                    <strong>${sessionKey}</strong><br>
+                    <small>Screen: ${state.screen || 'Unknown'}</small><br>
+                    <small>Last update: ${state.lastUpdate ? new Date(state.lastUpdate).toLocaleTimeString() : 'Never'}</small>
+                `;
+                item.onclick = (e) => selectSession(sessionKey, e);
+                sessionList.appendChild(item);
+            });
+        }
+        
+        function selectSession(sessionKey, event) {
+            if (!database) {
+                console.error('Database not initialized');
+                return;
+            }
+            
+            // Highlight selected session
+            document.querySelectorAll('.session-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            if (event && event.target) {
+                event.target.closest('.session-item').classList.add('active');
+            }
+            
+            // Start watching this session
+            if (monitorInterval) clearInterval(monitorInterval);
+            
+            database.ref(`sessions/${sessionKey}/currentState`).on('value', (snapshot) => {
+                const state = snapshot.val() || {};
+                updateSessionDetails(sessionKey, state);
+            }, (error) => {
+                console.error('Error monitoring session:', error);
+            });
+        }
+        
+        function updateSessionDetails(sessionKey, state) {
+            const details = document.getElementById('sessionDetails');
+            const status = document.getElementById('liveStatus');
+            
+            if (!details || !status) {
+                console.error('Session detail elements not found');
+                return;
+            }
+            
+            details.innerHTML = `
+                <div class="monitor-stat">
+                    <span>Session ID:</span>
+                    <span><strong>${sessionKey}</strong></span>
+                </div>
+                <div class="monitor-stat">
+                    <span>Current Screen:</span>
+                    <span><strong>${state.screen || 'Unknown'}</strong></span>
+                </div>
+                <div class="monitor-stat">
+                    <span>Current Block:</span>
+                    <span><strong>${state.block || 'N/A'}</strong></span>
+                </div>
+            `;
+            
+            if (state.stats) {
+                details.innerHTML += `
+                    <div class="monitor-stat">
+                        <span>Block Correct:</span>
+                        <span><strong>${state.stats.correct || 0}</strong></span>
+                    </div>
+                    <div class="monitor-stat">
+                        <span>Block Wrong:</span>
+                        <span><strong>${state.stats.wrong || 0}</strong></span>
+                    </div>
+                `;
+            }
+            
+            // Update live status
+            const screenStatus = getScreenStatus(state.screen);
+            status.innerHTML = `
+                <p><span class="status-badge" style="background-color: ${screenStatus.color}; color: white;">
+                    ${screenStatus.text}
+                </span></p>
+                <p>Last Update: ${state.lastUpdate ? new Date(state.lastUpdate).toLocaleTimeString() : 'Never'}</p>
+            `;
+        }
+        
+        function getScreenStatus(screen) {
+            const statusMap = {
+                'welcome': { text: 'Not Started', color: '#666' },
+                'baseline': { text: 'Resting Baseline', color: '#2196F3' },
+                'instructions': { text: 'Reading Instructions', color: '#FF9800' },
+                'practice': { text: 'Practice Session', color: '#9C27B0' },
+                'colorTest': { text: 'Active Test', color: '#f44336' },
+                'blockComplete': { text: 'Viewing Results', color: '#795548' },
+                'meal': { text: 'Meal Time', color: '#00BCD4' },
+                'complete': { text: 'Finished', color: '#4CAF50' }
+            };
+            
+            return statusMap[screen] || { text: 'Unknown', color: '#999' };
+        }
+        
+        // Monitor access - wait for DOM to load
+        document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('keydown', (e) => {
+                if (currentScreen === 'welcome' && e.ctrlKey && e.shiftKey && e.key === 'M') {
+                    const passwordInput = document.getElementById('monitorPassword');
+                    passwordInput.style.display = 'block';
+                    passwordInput.focus();
+                }
+            });
+            
+            document.getElementById('monitorPassword').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    if (e.target.value === 'monitor2024') {
+                        enterMonitorMode();
+                    } else {
+                        e.target.value = '';
+                        e.target.style.display = 'none';
+                    }
+                }
+            });
+        });
+        
+        // Show/hide screens
+        function showScreen(screenId) {
+            // Clear any pending response timer when changing screens
+            if (responseTimer) {
+                clearTimeout(responseTimer);
+            }
+            
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+            currentScreen = screenId;
+            
+            // Track screen change
+            trackEvent('screenChange', { newScreen: screenId });
+        }
+        
+        // Start protocol
+        function startProtocol() {
+            showScreen('baseline');
+            trackEvent('testStarted');
+        }
+        
+        // Start baseline timer
+        function startBaselineTimer() {
+            // Hide the start button and show the timer
+            document.getElementById('startBaselineBtn').style.display = 'none';
+            document.getElementById('baselineTimer').style.display = 'block';
+            
+            trackEvent('baselineStarted');
+            
+            startTimer('baselineTimer', 5 * 60, () => {
+                // Show next button when timer completes
+                let nextBtn = document.getElementById('baselineNextBtn');
+                if (!nextBtn) {
+                    nextBtn = document.createElement('button');
+                    nextBtn.id = 'baselineNextBtn';
+                    nextBtn.className = 'button';
+                    nextBtn.textContent = 'Next';
+                    nextBtn.style.marginTop = '20px';
+                    nextBtn.onclick = () => {
+                        showScreen('instructions');
+                    };
+                    document.getElementById('baseline').appendChild(nextBtn);
+                } else {
+                    nextBtn.style.display = 'inline-block';
+                }
+                trackEvent('baselineCompleted');
+            });
+        }
+        
+        // Start practice session
+        function startPractice() {
+            showScreen('practice');
+            practiceStep = 0;
+            runPracticeStep();
+            trackEvent('practiceStarted');
+        }
+        
+        // Practice steps
+        const practiceSteps = [
+            {
+                instruction: "First, let's try a matching example. The word RED is shown in red color. Press 'R' or click the R button.",
+                word: 'RED',
+                color: 'red',
+                expectedResponse: 'red'
+            },
+            {
+                instruction: "Now try this: The word GREEN is shown in green. Press 'G' or click the G button.",
+                word: 'GREEN', 
+                color: 'green',
+                expectedResponse: 'green'
+            },
+            {
+                instruction: "Now it gets tricky. The word says BLUE but it's colored red. Remember: respond to the COLOR (red), not the word. Press 'R'.",
+                word: 'BLUE',
+                color: 'red',
+                expectedResponse: 'red'
+            },
+            {
+                instruction: "Another tricky one: The word says YELLOW but it's green. What color do you see? Press 'G' for green.",
+                word: 'YELLOW',
+                color: 'green',
+                expectedResponse: 'green'
+            },
+            {
+                instruction: "During the test, you'll compete against another participant. This indicator shows who's winning. Click Next to learn more.",
+                showIndicator: true,
+                indicatorDemo: 'neutral',
+                nextButtonOnly: true,
+                hideWord: true,
+                showGlow: true
+            },
+            {
+                instruction: "When the indicator is GREEN like this, it means you're winning with better accuracy than your competitor.",
+                showIndicator: true,
+                indicatorDemo: 'winning',
+                nextButtonOnly: true,
+                hideWord: true
+            },
+            {
+                instruction: "When the indicator is RED like this, it means you're losing - your competitor has better accuracy.",
+                showIndicator: true,
+                indicatorDemo: 'losing',
+                nextButtonOnly: true,
+                hideWord: true
+            },
+            {
+                instruction: "When the indicator is ORANGE like this, it means you're tied with your competitor.",
+                showIndicator: true,
+                indicatorDemo: 'tied',
+                nextButtonOnly: true,
+                hideWord: true
+            }
+        ];
+        
+        function runPracticeStep() {
+            if (practiceStep < practiceSteps.length) {
+                const step = practiceSteps[practiceStep];
+                document.getElementById('practiceInstruction').textContent = step.instruction;
+                const wordElement = document.getElementById('practiceWord');
+                
+                // Handle word display
+                if (step.hideWord) {
+                    wordElement.style.display = 'none';
+                } else {
+                    wordElement.style.display = 'block';
+                    wordElement.textContent = step.word;
+                    wordElement.style.color = step.color === 'yellow' ? '#FFD700' : step.color;
+                    currentColor = step.expectedResponse;
+                }
+                
+                document.getElementById('practiceFeedback').textContent = '';
+                
+                // Handle performance indicator demonstration
+                const indicator = document.getElementById('practiceStatusIndicator');
+                const statusText = document.getElementById('practiceStatusText');
+                
+                if (step.showIndicator) {
+                    indicator.style.display = 'block';
+                    
+                    switch(step.indicatorDemo) {
+                        case 'neutral':
+                            indicator.className = 'status-indicator status-neutral' + (step.showGlow ? ' glow' : '');
+                            statusText.textContent = 'Performance Indicator';
+                            break;
+                        case 'winning':
+                            indicator.className = 'status-indicator status-winning';
+                            statusText.textContent = '✓ You\'re Winning!';
+                            break;
+                        case 'losing':
+                            indicator.className = 'status-indicator status-losing';
+                            statusText.textContent = '✗ You\'re Losing!';
+                            break;
+                        case 'tied':
+                            indicator.className = 'status-indicator status-tied';
+                            statusText.textContent = '➖ Tied';
+                            break;
+                    }
+                } else {
+                    indicator.style.display = 'none';
+                }
+                
+                // Show appropriate buttons
+                if (step.nextButtonOnly) {
+                    // Hide response buttons, show next button
+                    document.getElementById('practiceButtons').style.display = 'none';
+                    
+                    // Create or show next button if it doesn't exist
+                    let nextBtn = document.getElementById('practiceNextBtn');
+                    if (!nextBtn) {
+                        nextBtn = document.createElement('button');
+                        nextBtn.id = 'practiceNextBtn';
+                        nextBtn.className = 'button';
+                        nextBtn.textContent = 'Next';
+                        nextBtn.onclick = () => {
+                            practiceStep++;
+                            runPracticeStep();
+                        };
+                        document.getElementById('practice').insertBefore(nextBtn, document.getElementById('startTestBtn'));
+                    }
+                    nextBtn.style.display = 'inline-block';
+                } else {
+                    // Show response buttons, hide next button
+                    document.getElementById('practiceButtons').style.display = 'block';
+                    const nextBtn = document.getElementById('practiceNextBtn');
+                    if (nextBtn) nextBtn.style.display = 'none';
+                }
+            } else {
+                document.getElementById('practiceInstruction').innerHTML = `
+                    <div style="text-align: center;">
+                        <p style="font-size: 18px; margin-bottom: 20px;">Practice complete. You're ready to begin.</p>
+                        <p style="font-size: 48px; color: red; font-weight: bold; margin: 20px 0;">STOP</p>
+                        <p style="font-weight: bold; font-size: 18px; margin-top: 20px;">Now let your research coordinator know you are ready to begin the test.</p>
+                    </div>
+                `;
+                document.getElementById('practiceInstruction').parentElement.classList.add('center');
+                document.getElementById('practiceWord').style.display = 'none';
+                document.getElementById('practiceButtons').style.display = 'none';
+                document.getElementById('practiceFeedback').style.display = 'none';
+                document.getElementById('practiceStatusIndicator').style.display = 'none';
+                const nextBtn = document.getElementById('practiceNextBtn');
+                if (nextBtn) nextBtn.style.display = 'none';
+                document.getElementById('startTestBtn').classList.remove('hidden');
+                trackEvent('practiceCompleted');
+            }
+        }
+        
+        function checkPracticeResponse(selectedColor) {
+            if (practiceStep >= practiceSteps.length) return;
+            
+            const feedback = document.getElementById('practiceFeedback');
+            const step = practiceSteps[practiceStep];
+            
+            if (selectedColor === step.expectedResponse) {
+                feedback.textContent = 'Correct';
+                feedback.className = 'feedback correct';
+                practiceStep++;
+                setTimeout(() => {
+                    feedback.textContent = ''; // Clear feedback before next step
+                    runPracticeStep();
+                }, 1500);
+            } else {
+                feedback.textContent = 'Try again - remember to respond to the COLOR you see';
+                feedback.className = 'feedback wrong';
+                // Don't increment practiceStep, allowing them to try again
+            }
+        }
+        
+        // Start color test
+        function startColorTest() {
+            currentBlock = 1;
+            stats = { correct: 0, wrong: 0, blockStats: [] };
+            document.getElementById('wrong').textContent = '0';  // Reset the display
+            startBlock();
+            trackEvent('colorTestStarted');
+        }
+        
+        // Start a block
+        function startBlock() {
+            showScreen('colorTest');
+            document.getElementById('blockTitle').textContent = `Color Response - Block ${currentBlock}`;
+            
+            // Reset block stats
+            stats.blockStats[currentBlock - 1] = { correct: 0, wrong: 0 };
+            competitorStats = { correct: 0, wrong: 0 };
+            updateStats();
+            
+            // Show status indicator
+            document.getElementById('statusIndicator').style.display = 'block';
+            updateStatusIndicator();
+            
+            trackEvent('blockStarted', { block: currentBlock });
+            
+            // Start timer and word presentation
+            startTimer('colorTimer', 3 * 60, () => {
+                endBlock();
+            });
+            
+            // Simulate competitor responses
+            simulateCompetitor();
+            
+            presentWord();
+        }
+        
+        // Present a new word
+        function presentWord() {
+            const mismatch = Math.random() < mismatchProbability[currentBlock - 1];
+            const wordIndex = Math.floor(Math.random() * words.length);
+            let colorIndex;
+            
+            if (mismatch) {
+                // Choose a different color
+                do {
+                    colorIndex = Math.floor(Math.random() * colors.length);
+                } while (colorIndex === wordIndex);
+            } else {
+                // Matching color
+                colorIndex = wordIndex;
+            }
+            
+            currentWord = words[wordIndex];
+            currentColor = colors[colorIndex];
+            
+            const wordElement = document.getElementById('colorWord');
+            wordElement.textContent = currentWord;
+            wordElement.style.color = currentColor === 'yellow' ? '#FFD700' : currentColor;
+            
+            // Add animation class for visual feedback
+            wordElement.classList.remove('new-word');
+            void wordElement.offsetWidth; // Force reflow
+            wordElement.classList.add('new-word');
+            
+            // Clear feedback
+            document.getElementById('feedback').textContent = '';
+            
+            // Clear any existing response timer
+            if (responseTimer) {
+                clearTimeout(responseTimer);
+            }
+            
+            // Start 1.5 second response timer
+            responseTimer = setTimeout(() => {
+                handleTimeout();
+            }, 1500);
+        }
+        
+        // Handle response timeout
+        function handleTimeout() {
+            if (!currentColor || isProcessing || currentScreen !== 'colorTest') return;
+            
+            isProcessing = true;
+            const feedback = document.getElementById('feedback');
+            
+            // Show timeout feedback
+            feedback.textContent = 'TOO SLOW';
+            feedback.className = 'feedback wrong';
+            
+            // Count as wrong
+            stats.wrong++;
+            stats.blockStats[currentBlock - 1].wrong++;
+            
+            updateStats();
+            trackEvent('response', { result: 'timeout', block: currentBlock });
+            
+            // Present next word after a short delay
+            setTimeout(() => {
+                presentWord();
+                isProcessing = false;
+            }, 400);
+        }
+        
+        // Check response
+        function checkResponse(selectedColor) {
+            if (!currentColor || isProcessing) return;
+            
+            // Clear the response timer since they responded in time
+            if (responseTimer) {
+                clearTimeout(responseTimer);
+            }
+            
+            isProcessing = true;
+            const feedback = document.getElementById('feedback');
+            
+            // Visual feedback for button press
+            const buttons = document.querySelectorAll('.response-button');
+            buttons.forEach(btn => {
+                if (btn.textContent.toLowerCase() === selectedColor.charAt(0)) {
+                    btn.classList.add('pressed');
+                    setTimeout(() => btn.classList.remove('pressed'), 200);
+                }
+            });
+            
+            // Convert color code to color name for comparison
+            let actualColor = currentColor;
+            if (currentColor === '#FFD700') {
+                actualColor = 'yellow';
+            }
+            
+            if (selectedColor === actualColor) {
+                feedback.textContent = 'CORRECT';
+                feedback.className = 'feedback correct';
+                stats.correct++;
+                stats.blockStats[currentBlock - 1].correct++;
+                trackEvent('response', { result: 'correct', block: currentBlock });
+            } else {
+                feedback.textContent = 'WRONG';
+                feedback.className = 'feedback wrong';
+                stats.wrong++;
+                stats.blockStats[currentBlock - 1].wrong++;
+                trackEvent('response', { result: 'wrong', block: currentBlock });
+            }
+            
+            updateStats();
+            
+            // Present next word after a shorter delay
+            setTimeout(() => {
+                presentWord();
+                isProcessing = false;
+            }, 400);
+        }
+        
+        // Keyboard event listener
+        document.addEventListener('DOMContentLoaded', function() {
+            document.addEventListener('keydown', (event) => {
+                if (currentScreen === 'practice') {
+                    const key = event.key.toLowerCase();
+                    switch(key) {
+                        case 'r':
+                            checkPracticeResponse('red');
+                            break;
+                        case 'g':
+                            checkPracticeResponse('green');
+                            break;
+                        case 'b':
+                            checkPracticeResponse('blue');
+                            break;
+                        case 'y':
+                            checkPracticeResponse('yellow');
+                            break;
+                    }
+                } else if (currentScreen === 'colorTest') {
+                    const key = event.key.toLowerCase();
+                    switch(key) {
+                        case 'r':
+                            checkResponse('red');
+                            break;
+                        case 'g':
+                            checkResponse('green');
+                            break;
+                        case 'b':
+                            checkResponse('blue');
+                            break;
+                        case 'y':
+                            checkResponse('yellow');
+                            break;
+                    }
+                }
+            });
+        });
+        
+        // Update statistics display
+        function updateStats() {
+            // Display only the current block's wrong count
+            document.getElementById('wrong').textContent = stats.blockStats[currentBlock - 1].wrong;
+            updateStatusIndicator();
+        }
+        
+        // Update status indicator
+        function updateStatusIndicator() {
+            if (currentBlock === 0) return;
+            
+            const userTotal = stats.blockStats[currentBlock - 1].correct + stats.blockStats[currentBlock - 1].wrong;
+            const competitorTotal = competitorStats.correct + competitorStats.wrong;
+            
+            const userAccuracy = userTotal > 0 ? (stats.blockStats[currentBlock - 1].correct / userTotal) * 100 : 0;
+            const competitorAccuracy = competitorTotal > 0 ? (competitorStats.correct / competitorTotal) * 100 : 0;
+            
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            if (userTotal === 0 && competitorTotal === 0) {
+                indicator.className = 'status-indicator status-tied';
+                statusText.textContent = '➖ Starting...';
+            } else if (userAccuracy > competitorAccuracy) {
+                indicator.className = 'status-indicator status-winning';
+                statusText.textContent = '✓ You\'re Winning!';
+            } else if (userAccuracy < competitorAccuracy) {
+                indicator.className = 'status-indicator status-losing';
+                statusText.textContent = '✗ You\'re Losing!';
+            } else {
+                indicator.className = 'status-indicator status-tied';
+                statusText.textContent = '➖ Tied';
+            }
+        }
+        
+        // Simulate competitor responses
+        function simulateCompetitor() {
+            // Clear any existing interval
+            if (window.competitorInterval) {
+                clearInterval(window.competitorInterval);
+            }
+            
+            // Competitor responds every 1.6-2.4 seconds (similar to human speed)
+            window.competitorInterval = setInterval(() => {
+                if (currentScreen !== 'colorTest') {
+                    clearInterval(window.competitorInterval);
+                    return;
+                }
+                
+                // Get current user accuracy to stay close
+                const userTotal = stats.blockStats[currentBlock - 1].correct + stats.blockStats[currentBlock - 1].wrong;
+                const userAccuracy = userTotal > 0 ? (stats.blockStats[currentBlock - 1].correct / userTotal) : 0.75;
+                
+                // Get time remaining
+                const timerText = document.getElementById('colorTimer').textContent;
+                const minutes = parseInt(timerText.split(':')[0]);
+                const seconds = parseInt(timerText.split(':')[1]);
+                const totalSecondsRemaining = minutes * 60 + seconds;
+                
+                // Dynamic competitor behavior based on time remaining
+                let accuracyOffset;
+                
+                if (totalSecondsRemaining <= 10) {
+                    // Final 10 seconds: Competitor is always 4-8% better to ensure losing
+                    accuracyOffset = 0.04 + Math.random() * 0.04;
+                } else {
+                    // Rest of the time: Dynamic as before
+                    const elapsedTime = 180 - totalSecondsRemaining;
+                    const timeProgress = elapsedTime / 180;
+                    
+                    // Start close or even slightly worse, gradually get better
+                    const minOffset = -0.03 + (timeProgress * 0.04);
+                    const maxOffset = 0.03 + (timeProgress * 0.03);
+                    accuracyOffset = minOffset + Math.random() * (maxOffset - minOffset);
+                }
+                
+                const targetAccuracy = Math.min(0.93, Math.max(0.4, userAccuracy + accuracyOffset));
+                const isCorrect = Math.random() < targetAccuracy;
+                
+                if (isCorrect) {
+                    competitorStats.correct++;
+                } else {
+                    competitorStats.wrong++;
+                }
+                
+                updateStatusIndicator();
+            }, 1600 + Math.random() * 800);
+        }
+        
+        // End block
+        function endBlock() {
+            clearInterval(timer);
+            clearInterval(window.competitorInterval);
+            
+            // Clear any pending response timer
+            if (responseTimer) {
+                clearTimeout(responseTimer);
+            }
+            
+            // Hide status indicator
+            document.getElementById('statusIndicator').style.display = 'none';
+            
+            // Calculate and display block statistics
+            const blockStats = stats.blockStats[currentBlock - 1];
+            const total = blockStats.correct + blockStats.wrong;
+            const accuracy = total > 0 ? Math.round((blockStats.correct / total) * 100) : 0;
+            
+            // Display user score
+            document.getElementById('blockCorrect').textContent = blockStats.correct;
+            document.getElementById('blockWrong').textContent = blockStats.wrong;
+            document.getElementById('blockAccuracy').textContent = accuracy;
+            
+            // Use the simulated competitor stats with final adjustments
+            let competitorCorrect = competitorStats.correct;
+            let competitorWrong = competitorStats.wrong;
+            let competitorTotal = competitorCorrect + competitorWrong;
+            
+            // Ensure competitor has 5-15% more responses (slightly faster)
+            const targetTotal = Math.round(total * (1.05 + Math.random() * 0.1));
+            const responsesToAdd = Math.max(0, targetTotal - competitorTotal);
+            
+            // Add the extra responses with good accuracy
+            for (let i = 0; i < responsesToAdd; i++) {
+                if (Math.random() < 0.88) {
+                    competitorCorrect++;
+                } else {
+                    competitorWrong++;
+                }
+            }
+            
+            competitorTotal = competitorCorrect + competitorWrong;
+            
+            // Final check: ensure competitor wins by 1.5-4% accuracy
+            if (total > 0 && competitorTotal > 0) {
+                const competitorAccuracy = (competitorCorrect / competitorTotal) * 100;
+                const targetAccuracy = Math.min(96, accuracy + 1.5 + Math.random() * 2.5);
+                
+                if (competitorAccuracy < targetAccuracy) {
+                    // Adjust to ensure competitor wins by a small but consistent margin
+                    competitorCorrect = Math.round((targetAccuracy / 100) * competitorTotal);
+                    competitorWrong = competitorTotal - competitorCorrect;
+                }
+            }
+            
+            const competitorAccuracyPercent = competitorTotal > 0 ? Math.round((competitorCorrect / competitorTotal) * 100) : 0;
+            
+            // Display competitor score
+            document.getElementById('competitorCorrect').textContent = competitorCorrect;
+            document.getElementById('competitorWrong').textContent = competitorWrong;
+            document.getElementById('competitorAccuracy').textContent = competitorAccuracyPercent;
+            
+            trackEvent('blockCompleted', {
+                block: currentBlock,
+                userScore: { correct: blockStats.correct, wrong: blockStats.wrong, accuracy },
+                competitorScore: { correct: competitorCorrect, wrong: competitorWrong, accuracy: competitorAccuracyPercent }
+            });
+            
+            // Show block complete screen
+            document.getElementById('blockCompleteTitle').textContent = `Block ${currentBlock} Complete`;
+            showScreen('blockComplete');
+        }
+        
+        // Next block
+        function nextBlock() {
+            currentBlock++;
+            if (currentBlock <= 3) {
+                // Reset the wrong counter display for the new block
+                document.getElementById('wrong').textContent = '0';
+                startBlock();
+            } else {
+                // Show meal screen
+                showScreen('meal');
+            }
+        }
+        
+        // Start meal timer
+        function startMealTimer() {
+            // Hide the start button and show the timer
+            document.getElementById('startMealBtn').style.display = 'none';
+            document.getElementById('mealTimer').style.display = 'block';
+            
+            trackEvent('mealStarted');
+            
+            startTimer('mealTimer', 5 * 60, () => {
+                // Show next button when timer completes
+                let nextBtn = document.getElementById('mealNextBtn');
+                if (!nextBtn) {
+                    nextBtn = document.createElement('button');
+                    nextBtn.id = 'mealNextBtn';
+                    nextBtn.className = 'button';
+                    nextBtn.textContent = 'Next';
+                    nextBtn.style.marginTop = '20px';
+                    nextBtn.onclick = () => {
+                        showProtocolComplete();
+                    };
+                    document.getElementById('meal').appendChild(nextBtn);
+                } else {
+                    nextBtn.style.display = 'inline-block';
+                }
+                trackEvent('mealCompleted');
+            });
+        }
+        
+        // Show protocol complete
+        function showProtocolComplete() {
+            clearInterval(timer);
+            showScreen('complete');
+            trackEvent('testCompleted', { finalStats: stats });
+        }
+        
+        // Timer function
+        function startTimer(timerId, seconds, callback) {
+            let remaining = seconds;
+            const timerElement = document.getElementById(timerId);
+            
+            function updateTimer() {
+                const minutes = Math.floor(remaining / 60);
+                const secs = remaining % 60;
+                timerElement.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
+                
+                if (remaining <= 0) {
+                    clearInterval(timer);
+                    if (callback) callback();
+                } else {
+                    remaining--;
+                }
+            }
+            
+            updateTimer();
+            timer = setInterval(updateTimer, 1000);
+        }
+        
+        // Skip to next section (for testing)
+        function skipToNext() {
+            clearInterval(timer);
+            
+            switch(currentScreen) {
+                case 'baseline':
+                    // If timer is running, show next button; otherwise start timer
+                    if (document.getElementById('baselineTimer').style.display === 'block') {
+                        showScreen('instructions');
+                    } else {
+                        startBaselineTimer();
+                    }
+                    break;
+                case 'instructions':
+                    startPractice();
+                    break;
+                case 'practice':
+                    startColorTest();
+                    break;
+                case 'colorTest':
+                    endBlock();
+                    break;
+                case 'blockComplete':
+                    nextBlock();
+                    break;
+                case 'meal':
+                    // If timer is running, show complete screen; otherwise start timer
+                    if (document.getElementById('mealTimer').style.display === 'block') {
+                        showProtocolComplete();
+                    } else {
+                        startMealTimer();
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    </script>
+</body>
+</html>
