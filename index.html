@@ -476,16 +476,7 @@
                     lineno: event.lineno,
                     colno: event.colno,
                     stack: event.error ? event.error.stack : 'No stack trace'
-                // Make functions globally accessible for onclick handlers
-        window.startProtocol = startProtocol;
-        window.startBaselineTimer = startBaselineTimer;
-        window.startPractice = startPractice;
-        window.checkPracticeResponse = checkPracticeResponse;
-        window.startColorTest = startColorTest;
-        window.checkResponse = checkResponse;
-        window.nextBlock = nextBlock;
-        window.startMealTimer = startMealTimer;
-        window.skipToNext = skipToNext;
+                });
             });
         
         // Make functions globally accessible for onclick handlers
@@ -1449,6 +1440,9 @@
                     break;
             }
         }
+    } catch (e) {
+        console.error('Initialisation error:', e);
+    }
     </script>
 </body>
 </html>
