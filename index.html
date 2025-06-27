@@ -489,6 +489,25 @@
         window.nextBlock = nextBlock;
         window.startMealTimer = startMealTimer;
         window.skipToNext = skipToNext;
+
+        // Firebase test function for debug button
+        function testFirebase() {
+            console.log('Test Firebase button clicked.');
+
+            if (!firebase || !firebase.database) {
+                console.warn('Firebase is not initialized properly.');
+                return;
+            }
+
+            try {
+                const testRef = firebase.database().ref('debug/test');
+                testRef.set({ message: 'Test successful', timestamp: new Date().toISOString() });
+                console.log('Test write to Firebase completed.');
+            } catch (error) {
+                console.error('Error during Firebase test:', error);
+            }
+        }
+        window.testFirebase = testFirebase;
             
             console.log('Error handler registered');
             
